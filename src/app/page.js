@@ -14,8 +14,13 @@ import Webcam from "react-webcam";
 import * as cocossd from "@tensorflow-models/coco-ssd";
 import "@tensorflow/tfjs-backend-cpu";
 import "@tensorflow/tfjs-backend-webgl";
+import { drawOnCanvas } from "@/utils/draw";
+import { toast } from "sonner";
 
 export default function Home() {
+  let interval = null;
+  let stop_timer = null;
+
   const camRef = useRef(null);
   const canvasRef = useRef(null);
   const [mirrored, setMirrored] = useState(false);
@@ -23,6 +28,58 @@ export default function Home() {
   const [isAutoRecord, setIsAutoRecord] = useState(false);
   const [model, setModel] = useState();
   const [loading, setLoading] = useState(false);
+
+  const mediaRecorder = useRef(null);
+
+  useEffect(() => {
+    if (camRef && camRef.current) {
+      const stream = camRef.current.video.captureStream();
+      if (stream) {
+        mediaRecorder.current = new MediaRecorder(stream);
+
+        mediaRecorder.current.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            const recordedBlob = new Blob([e.data], { type: "video" });
+            const videoURL = URL.createObjectURL(recordedBlob);
+
+            const a = document.createElement("a");
+            a.href = videoURL;
+            a.download = `${formatDate(new Date())}.webm`;
+            a.click();
+          }
+        };
+        mediaRecorder.current.onstart = (e) => {
+          setIsRecording(true);
+        };
+        mediaRecorder.current.onstop = (e) => {
+          setIsRecording(false);
+        };
+      }
+    }
+  }, [camRef]);
+
+  const resizeCanvas = (video, canvas) => {
+    if (video && canvas) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+  };
+  const runPrediction = async () => {
+    if (
+      model &&
+      camRef.current &&
+      camRef.current.video &&
+      camRef.current.video.readyState === 4
+    ) {
+      const video = camRef.current.video;
+      const predictions = await model.detect(video);
+
+      console.log(predictions);
+
+      resizeCanvas(camRef.current.video, canvasRef.current);
+      drawOnCanvas(mirrored, predictions, canvasRef.current?.getContext("2d"));
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +91,14 @@ export default function Home() {
       setLoading(false);
     }
   });
+
+  useEffect(() => {
+    interval = setInterval(() => {
+      runPrediction();
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [camRef.current, model, mirrored, runPrediction]);
 
   const initModel = async () => {
     const model = await cocossd.load({
@@ -59,19 +124,24 @@ export default function Home() {
   const videoRecord = () => {
     if (!camRef.current) {
       toast("Camera not found. Please refresh");
-    } else {
-      setIsRecording((prev) => !prev);
-      if (isRecording) {
-        const imageSrc = camRef.current.getScreenshot();
-        const blob = base64toBlob(imageSrc);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${formatDate(new Date())}.mp4`;
-        link.click();
-        setIsRecording(false);
-      }
     }
+    if (mediaRecorder.current?.state == "recording") {
+      mediaRecorder.current.requestData();
+      mediaRecorder.current.stop();
+      toast("Recording Saved");
+    } else {
+      startRecording();
+    }
+  };
+
+  const startRecording = () => {
+    mediaRecorder.current.start();
+    toast("Recording Started");
+    stop_timer = setTimeout(() => {
+      mediaRecorder.current.requestData();
+      mediaRecorder.current.stop();
+      toast("Recording Saved");
+    }, 20000);
   };
 
   const autoRecord = () => {
@@ -197,4 +267,19 @@ export default function Home() {
       )}
     </div>
   );
+}
+function formatDate(d) {
+  const formattedDate =
+    [
+      (d.getMonth() + 1).toString().padStart(2, "0"),
+      d.getDate().toString().padStart(2, "0"),
+      d.getFullYear(),
+    ].join("-") +
+    " " +
+    [
+      d.getHours().toString().padStart(2, "0"),
+      d.getMinutes().toString().padStart(2, "0"),
+      d.getSeconds().toString().padStart(2, "0"),
+    ].join("-");
+  return formattedDate;
 }
