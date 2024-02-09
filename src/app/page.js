@@ -8,16 +8,39 @@ import {
   PersonStanding,
   Video,
 } from "lucide-react";
-import { useRef, useState } from "react";
-import { render } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { Rings } from "react-loader-spinner";
 import Webcam from "react-webcam";
+import * as cocossd from "@tensorflow-models/coco-ssd";
+import "@tensorflow/tfjs-backend-cpu";
+import "@tensorflow/tfjs-backend-webgl";
+
 export default function Home() {
   const camRef = useRef(null);
   const canvasRef = useRef(null);
   const [mirrored, setMirrored] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAutoRecord, setIsAutoRecord] = useState(false);
+  const [model, setModel] = useState();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    initModel();
+  }, []);
+
+  useEffect(() => {
+    if (model) {
+      setLoading(false);
+    }
+  });
+
+  const initModel = async () => {
+    const model = await cocossd.load({
+      base: "lite_mobilenet_v2",
+    });
+    setModel(model);
+  };
 
   const screenShot = () => {
     if (!camRef.current) {
@@ -167,6 +190,11 @@ export default function Home() {
           </div>
         </div>
       </div>
+      {loading && (
+        <div className="z-50 absolute w-full h-full flex items-center justify-center bg-primary-foreground">
+          Getting things ready . . . <Rings height={50} color="red" />
+        </div>
+      )}
     </div>
   );
 }
