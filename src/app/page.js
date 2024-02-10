@@ -78,6 +78,13 @@ export default function Home() {
 
       resizeCanvas(camRef.current.video, canvasRef.current);
       drawOnCanvas(mirrored, predictions, canvasRef.current?.getContext("2d"));
+
+      let isPerson = false;
+      if (predictions.length > 0)
+        predictions.forEach((detectedObject) => {
+          if (detectedObject.class == "person") isPerson = true;
+        });
+      if (isPerson && isAutoRecord) startRecording();
     }
   };
 
@@ -98,7 +105,7 @@ export default function Home() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [camRef.current, model, mirrored, runPrediction]);
+  }, [camRef.current, model, mirrored, runPrediction, isAutoRecord]);
 
   const initModel = async () => {
     const model = await cocossd.load({
@@ -213,30 +220,20 @@ export default function Home() {
           </div>
           <div className="flex flex-col gap-2">
             <Separator />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                screenShot;
-              }}
-            >
+            <Button variant="outline" size="icon" onClick={screenShot}>
               <CameraIcon />
             </Button>
             <Button
               variant={isRecording ? "destructive" : "outline"}
               size="icon"
-              onClick={() => {
-                videoRecord;
-              }}
+              onClick={videoRecord}
             >
               <Video />
             </Button>
             <Button
               variant={isAutoRecord ? "destructive" : "outline"}
               size="icon"
-              onClick={() => {
-                autoRecord;
-              }}
+              onClick={autoRecord}
             >
               {isAutoRecord ? (
                 <Rings
