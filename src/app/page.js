@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   CameraIcon,
   FlipHorizontal,
+  GithubIcon,
   PersonStanding,
   Video,
 } from "lucide-react";
@@ -252,7 +253,12 @@ export default function Home() {
             <Separator />
           </div>
           <div className="flex flex-col gap-2">
-            <Button></Button>
+            <a
+              href="https://github.com/Code-XT/object-detection_auto-record"
+              target="_blank"
+            >
+              <GithubIcon />
+            </a>
             <Separator />
           </div>
         </div>
@@ -262,6 +268,9 @@ export default function Home() {
           Getting things ready . . . <Rings height={50} color="red" />
         </div>
       )}
+      <Button variant="outline" size="icon" className="absolute right-8 top-2">
+        CodeX
+      </Button>
     </div>
   );
 }
